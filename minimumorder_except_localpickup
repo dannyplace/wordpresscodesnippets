@@ -1,0 +1,39 @@
+add_action( 'woocommerce_checkout_process', 'wc_minimum_required_order_amount' );
+add_action( 'woocommerce_before_cart' , 'wc_minimum_required_order_amount' );
+function wc_minimum_required_order_amount() {
+
+    // HERE Your settings
+    $minimum_amount     = 20; // The minimum cart total amount
+    $shipping_method_id = 'local_pickup'; // The targeted shipping method Id (exception)
+
+    // Get some variables
+	// To excluse the shipping costs in minimal order we have to change  cart->total; to $cart_total cart->subtotal;
+    $cart_total     = (float) WC()->cart->subtotal; // Total cart amount
+    $chosen_methods = (array) WC()->session->get( 'chosen_shipping_methods' ); // Chosen shipping method rate Ids (array)
+
+    // Only when a shipping method has been chosen
+    if ( ! empty($chosen_methods) ) {
+        $chosen_method  = explode(':', reset($chosen_methods)); // Get the chosen shipping method Id (array)
+        $chosen_method_id = reset($chosen_method); // Get the chosen shipping method Id
+    }
+
+    // If "Local pickup" shipping method is chosen, exit (no minimun is required)
+    if ( isset($chosen_method_id) && $chosen_method_id === $shipping_method_id ) {
+        return; // exit
+    }
+
+    // Add an error notice is cart total is less than the minimum required
+    if ( $cart_total < $minimum_amount ) {
+        $text_notice = sprintf(
+            __("U dient tenminste voor %s te bestellen wanneer u kiest voor <b>thuisbezorgen!</b> Wanneer u kiest <b>voor afhalen geldt het minimumbedrag niet</b>. U heeft momenteel een bestelling van %s.<br><br>", "woocommerce"), // Text message
+            wc_price( $minimum_amount ),
+            wc_price( $cart_total )
+        );
+        
+        if ( is_cart() ) {
+            wc_print_notice( $text_notice, 'error' );
+        } else {
+            wc_add_notice( $text_notice, 'error' );
+        }
+    }
+}
